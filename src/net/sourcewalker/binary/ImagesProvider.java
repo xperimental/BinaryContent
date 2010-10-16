@@ -64,8 +64,7 @@ public class ImagesProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        // TODO Auto-generated method stub
-        return false;
+        return true;
     }
 
     @Override

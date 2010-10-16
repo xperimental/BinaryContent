@@ -24,6 +24,8 @@ public class ImageCreateService extends IntentService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         queued.incrementAndGet();
+        Log.d(TAG, "queueing image: " + intent.getAction() + " at "
+                + queued.get());
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -44,7 +46,10 @@ public class ImageCreateService extends IntentService {
                 Log.e(TAG, e.getMessage());
             }
         }
-        if (queued.decrementAndGet() == 0) {
+        int left = queued.decrementAndGet();
+        Log.d(TAG, "finished image " + intent.getAction() + ". left: " + left);
+        if (left == 0) {
+            Log.d(TAG, "  notifying listeners...");
             getContentResolver().notifyChange(ImagesProvider.CONTENT_URI, null);
         }
     }
