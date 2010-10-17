@@ -25,20 +25,21 @@ public class ImagesProvider extends ContentProvider {
     private static final String AUTHORITY = "net.sourcewalker.binary";
     private static final String CONTENT_TYPE = "vnd.android.cursor.dir/net.sourcewalker.binary";
     private static final UriMatcher uriMatcher;
+    private static final int NUM_IMAGES = 20;
 
     public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY
             + "/images");
-    public static final Uri CONTENT_URI_IMAGE = Uri.parse("content://"
-            + AUTHORITY + "/image");
 
     private static final int MATCH_LIST = 1;
+    private static final int MATCH_ID = 2;
 
     static {
         uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
         uriMatcher.addURI(AUTHORITY, "images", MATCH_LIST);
+        uriMatcher.addURI(AUTHORITY, "images/#", MATCH_ID);
     }
 
-    private Random idRand = new Random();
+    private int[] idArray;
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
@@ -64,6 +65,11 @@ public class ImagesProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        Random idRand = new Random();
+        idArray = new int[NUM_IMAGES];
+        for (int i = 0; i < NUM_IMAGES; i++) {
+            idArray[i] = idRand.nextInt(10000);
+        }
         return true;
     }
 
@@ -71,23 +77,36 @@ public class ImagesProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection,
             String[] selectionArgs, String sortOrder) {
         Log.d(TAG, "query(" + uri + ")");
+        MatrixCursor cursor = new MatrixCursor(new String[] { "_id", "image",
+                "_data" });
+        cursor.setNotificationUri(getContext().getContentResolver(), uri);
         switch (uriMatcher.match(uri)) {
         case MATCH_LIST:
-            MatrixCursor cursor = new MatrixCursor(new String[] { "_id",
-                    "image", "image_data" });
-            for (int i = 0; i < 100; i++) {
-                int id = idRand.nextInt(10000);
-                cursor
-                        .addRow(new Object[] {
-                                new Integer(id),
-                                ContentUris.withAppendedId(CONTENT_URI_IMAGE,
-                                        id), "" });
+            for (int id : idArray) {
+                addRow(cursor, id);
             }
-            cursor.setNotificationUri(getContext().getContentResolver(), uri);
-            return cursor;
+            break;
+        case MATCH_ID:
+            long id = ContentUris.parseId(uri);
+            addRow(cursor, id);
+            break;
         default:
             throw new IllegalArgumentException("Unknown URI: " + uri);
         }
+        return cursor;
+    }
+
+    private void addRow(MatrixCursor cursor, long id) {
+        File imageFile = getImageFile(id);
+        String imagePath;
+        if (imageFile.exists()) {
+            imagePath = imageFile.getAbsolutePath();
+        } else {
+            imagePath = getWaitingImage().getAbsolutePath();
+            createImage(id);
+        }
+        cursor.addRow(new Object[] { new Long(id),
+                ContentUris.withAppendedId(CONTENT_URI, id), imagePath });
     }
 
     @Override
@@ -101,18 +120,7 @@ public class ImagesProvider extends ContentProvider {
     public ParcelFileDescriptor openFile(Uri uri, String mode)
             throws FileNotFoundException {
         Log.d(TAG, "openFile(" + uri + ", " + mode + ")");
-        long id = ContentUris.parseId(uri);
-        File imageFile = getImageFile(id);
-        ParcelFileDescriptor result;
-        if (!imageFile.exists()) {
-            createImage(id);
-            result = ParcelFileDescriptor.open(getWaitingImage(),
-                    ParcelFileDescriptor.MODE_READ_ONLY);
-        } else {
-            result = ParcelFileDescriptor.open(imageFile,
-                    ParcelFileDescriptor.MODE_READ_ONLY);
-        }
-        return result;
+        return super.openFileHelper(uri, mode);
     }
 
     private File getWaitingImage() {

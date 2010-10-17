@@ -48,7 +48,7 @@ public class ImageCreateService extends IntentService {
         }
         int left = queued.decrementAndGet();
         Log.d(TAG, "finished image " + intent.getAction() + ". left: " + left);
-        if (left == 0) {
+        if ((left % 5) == 0) {
             Log.d(TAG, "  notifying listeners...");
             getContentResolver().notifyChange(ImagesProvider.CONTENT_URI, null);
         }
