@@ -21,18 +21,15 @@ containing three columns:
 
  *  `_id`  which is the standard ID column. This column is also used as text in
     the list activity. 
- * `image_data` which signals the ContentResolver that the `image` column contains a `content://`
-    URI that should be used to retrieve large binary data. 
+ * `_data` which signals the ContentResolver that the `image` column contains a `content://`
+    URI that should be used to retrieve large binary data. This column also contains the filename
+    of the file containing the binary data to be read.
  * `image` contains a `content://` URI pointing to the same ContentProvider. This URI is
     passed to `openFile(...)` by the ContentResolver.
    
-The `openFile(...)` method in the ImagesProvider extracts the ID from the URI and tries to get the
-image with the provided ID. If the image does not exist an intent will be created starting the
-ImageCreateService and a default image will be passed to the caller.
-
-Note that there is a default implementation for `openFile(...)` in the ContentProvider class which
-reads the binary contents from a filename specified by the `image_data` column, which is probably
-sufficient for most applications. This implementation shows how it is possible to get more control
-by providing an own implementation of the binary data handling.
+The `openFile(Uri, String)` method in the ImagesProvider just shows a small debug message and then passes on
+the request to the `ContentProvider.openFileHelper(Uri, String)` method. The `openFileHelper` method
+then queries the ContentProvider using the URI provided and gets back the contents of the `_data` column.
+It returns a `ParcelFileDescriptor` for the filename in the column.
 
  [1]: http://developer.android.com/guide/topics/providers/content-providers.html
